@@ -1,0 +1,208 @@
+<style>
+	.table {
+		border-collapse: collapse;
+		width: 100%;
+		text-align: center;
+	}
+	.table td {
+		border: 1px solid #ccc;
+		line-height: 2em;
+	}
+	.table tr.current {
+		background-color: #ededed;
+	}
+	.none {
+		display: none;
+	}
+	.btn {
+		padding: .5em 1em;
+		border-radius: 3px;
+		color: #333;
+		border:1px solid #ccc;
+		cursor: pointer;
+		display: inline-block;
+	}
+	.btns {
+		margin-bottom: .5em;
+	}
+</style>
+<script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+<script>
+var baseURL = "http://134.175.154.93:6677";
+// 加载数据
+function reloadData(){
+	var url = baseURL+"/customer/findCustomerAll";
+	$.get(url,function(response,status){
+		//1. 将tbody清空
+		$("#customer_tbl tbody").empty();
+		//2. 追加新的值
+		response.data.forEach(function(item){
+			var newTr = $(`<tr>
+				<td><input type="checkbox" value="`+item.id+`"></td>
+				<td>`+item.realname+`</td>
+				<td>`+item.status+`</td>
+				<td>`+item.telephone+`</td>
+				<td>
+					<a class="btn_del" href="javascript:void(0)">删除</a>
+					<a class="btn_upd" href="javascript:void(0)">修改</a>
+					<a class="btn_details" href="javascript:void(0)">详情</a>
+				</td>
+			</tr>`);
+			$("#customer_tbl").append(newTr)
+		});
+	});
+}
+// 文档加载完毕之后执行
+$(function(){
+	//调用重载数据
+	reloadData();
+	// 为删除he修改绑定事件
+	$("#customer_tbl").on("click","a",function(event){
+		switch(this.className){
+			case "btn_details":
+				// 获取当前行的id
+				var id = $(this).parents("tr").children().eq(0).find("input").val();
+				//跳转到详情页面
+				var url ="./pages/customerDetails.html"
+				$("#wrapper").load(url+"?time="+Math.random())
+				// 将值保存到浏览器中
+				sessionStorage.setItem("customerId",id)
+				break;
+			case "btn_del":
+				// 获取当前行的id
+				var id = $(this).parents("tr").children().eq(0).find("input").val();
+				// 交互
+				var url = baseURL +"/customer/deleteCustomerById"
+				var data = {
+					id:id
+				}
+
+				$.post(url,data,function(result){
+					if(result.status === 200){
+						// 更新页面
+						reloadData();
+					} else {
+						alert(result.message);
+					}
+				});
+				break;
+			case "btn_upd":
+				//1. 将当前行信息设置到表单中
+				var id = $(this).parents("tr").children().eq(0).find("input").val();
+				var realname = $(this).parents("tr").children().eq(1).text();
+				var telephone = $(this).parents("tr").children().eq(2).text();
+
+				$("#customer_form input[name=id]").val(id);
+				$("#customer_form input[name=realname]").val(realname);
+				$("#customer_form input[name=telephone]").val(telephone);
+				break;
+		}
+
+		event.preventDefault();
+	});
+
+
+	// 为添加按钮绑定事件处理函数
+	$("#btn_add").click(function(){
+		$("#customer_form input[name=id]").val("");
+		$("#customer_form input[name=realname]").val("");
+		$("#customer_form input[name=telephone]").val("");
+	});
+	// 为表单绑定提交事件
+	$("#customer_form").submit(function(event){
+		//1. 获取表单元素的值
+		var id = $(this).find("input[name=id]").val();
+		var realname = $(this).find("input[name=realname]").val();
+		var telephone = $(this).find("input[name=telephone]").val();
+		//2. 与后台进行交互
+		var data = {
+			id:id,
+			realname:realname,
+			telephone:telephone
+		}
+		var url = baseURL+"/customer/saveCustomerOrUpdateCustomer";
+		$.post(url,data,function(result){
+			if(result.status === 200){
+				alert("保存或更新成功");
+				// 更新页面
+				reloadData();
+			} else {
+				alert(result.message);
+			}
+		})
+
+		event.preventDefault();
+	});
+	// 为批量删除按钮绑定事件
+	$("#btn_batch_del").click(function(){
+		var ids = 
+		$("#customer_tbl input:checkbox").filter(":checked")
+		.map(function(index,item){
+			return $(item).val()
+		})
+		.toArray();
+		// 调用后台接口删除顾客信息
+		/*
+		[1,2]
+		"ids=1&ids=2"
+		*/
+		var data ="";
+		for(var key in ids){
+			var id = ids[key];
+			if(key==0){
+				data+="ids="+id
+			} else {
+				data+="&ids="+id
+			}
+		}
+
+		$.ajax({
+			url:baseURL+"/customer/batchDeleteCustomer",
+			method:"post",
+			data:data,
+			success:function(result){
+				console.log(result);
+				if(result.status === 200){
+					alert("批量删除成功");
+					// 更新页面
+					reloadData();
+				} else {
+					alert(result.message);
+				}
+			}
+		})
+	})
+})
+</script>
+
+<div class="customer">
+	<div class="btns">
+		<div id="btn_add" class="btn">添加</div>
+		<div id="btn_batch_del" class="btn">批量删除</div>
+	</div>
+	
+	<div style="margin-bottom: .5em">
+		<!-- 表单 -->
+		<form id="customer_form" action="javascript:void(0)">
+			<input type="hidden" name="id" />
+			姓名<input type="text" name="realname"/>
+			手机号 <input type="text" name="telephone"/>
+			<input type="submit" value="提交">
+		</form>
+	</div>
+
+	<table class="table" id="customer_tbl">
+		<thead>
+			<tr>
+				<td width="80px">编号</td>
+				<td>姓名</td>
+				<td>状态</td>
+				<td>手机号</td>
+				<td width="100px">操作</td>
+			</tr>
+		</thead>
+		<tbody>
+			
+		</tbody>
+	</table>
+</div>

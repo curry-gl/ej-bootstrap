@@ -1,0 +1,32 @@
+<style>
+	
+</style>
+<script>
+function init(){
+	var id = sessionStorage.getItem("customerId");
+	// 通过id查找用户信息
+	var url = "http://134.175.154.93:6677/customer/findCustomerById?id="+id;
+	$.get(url,function(result){
+		if(result.status === 200){
+			$("#h2_realname").text(result.data.realname);
+		} else {
+			alert(result.message);
+		}
+	});
+}
+$(function(){
+	init();
+
+	$(".back").click(function(){
+		var url ="./pages/customer.html"
+		$("#wrapper").load(url+"?time="+Math.random())
+	});
+});
+</script>
+
+<div class="customerDetails">
+	<div>个人详情</div>
+	<h2>姓名： <span id="h2_realname"></span></h2>
+	<h2>手机号 <div id="h2_telephone"></div></h2>
+	<button class="back">返回</button>
+</div>
